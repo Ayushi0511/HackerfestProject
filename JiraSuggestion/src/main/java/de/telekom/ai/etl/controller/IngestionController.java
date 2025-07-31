@@ -50,11 +50,6 @@ public class IngestionController {
 
     @GetMapping("run-ingestion")
     public Flux<String> run(@RequestParam String query) {
-//        List<Document> results = vectorStore.similaritySearch(SearchRequest.builder().query("programming language").build());
-//
-//        results.stream()
-//                .map(Document::getFormattedContent)
-//                .forEach(System.out::println);
         LOGGER.info("called run-ingestion with query: {}", query);
         return Mono.fromCallable(() ->
                         vectorStore.similaritySearch(SearchRequest.builder()
