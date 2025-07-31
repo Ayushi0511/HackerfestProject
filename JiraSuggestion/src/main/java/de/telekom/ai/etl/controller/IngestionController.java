@@ -71,9 +71,9 @@ public class IngestionController {
                         .topK(topk)
                         .build())
                 ).subscribeOn(Schedulers.boundedElastic())
-                    .doOnSuccess(results -> {
-                            LOGGER.info("results: {}", results);
-                        });
+                .doOnSuccess(results -> {
+                        LOGGER.info("results: {}", results);
+                    });
     }
 
     @GetMapping("/search2")
@@ -223,5 +223,16 @@ public class IngestionController {
             }
         });
        // LOGGER.info("JIRA ISSUE WITH COMMENTS: {}", issue);
+    }
+    public  boolean filterOutLowScoreDocuments(Document doc) {
+        Map<String, Object> metadata = doc.getMetadata();
+        if (metadata != null) {
+            Object key = metadata.get("score");
+            if (key instanceof Number && ((Number) key).doubleValue() >= 0.7) {
+                LOGGER.info("Skipping document with low score: {}", key);
+            }
+            return true;
+        }
+        return false;
     }
 }

@@ -50,6 +50,10 @@ public class ClientQueryController {
                     List<String> combinedContents = getCombinedContents(results);
                     String inputForModel = String.join("\n\n---\n\n", combinedContents);
                     LOGGER.info("Input for Llama3 model: {}", inputForModel);
+                    if( inputForModel.isEmpty()) {
+                        LOGGER.warn("Input for model is empty, returning default message");
+                        return Mono.just("No relevant history found for the query.");
+                    }
                     return ollamaService.getSummary(inputForModel).flatMap(
                             response -> {
                                 return Mono.just(response.getMessage().getContent());
@@ -72,44 +76,54 @@ public class ClientQueryController {
         }
 
     private List<String> getCombinedContents(List<Document> results) {
-        List<String> combinedContents = results.stream().map(doc -> {
-            String issueText = doc.getText();
-            Map<String, Object> metadata = doc.getMetadata();
+        List<String> combinedContents = results.stream()
+                .filter(this::filterOutLowScoreDocuments)
+                .map(doc -> {
+                    String issueText = doc.getText();
+                    Map<String, Object> metadata = doc.getMetadata();
 
-            String assigneeCommentsRaw = "";
-            String reporterCommentsRaw = "";
+                    String assigneeCommentsRaw = "";
+                    String reporterCommentsRaw = "";
 
-            if (metadata != null) {
-                if (metadata.containsKey("assignee.comments")) {
-                    Object obj = metadata.get("assignee.comments");
-                    assigneeCommentsRaw = obj != null ? obj.toString() : "";
-                }
+                    if (metadata != null) {
+                        if (metadata.containsKey("assignee.comments")) {
+                            Object obj = metadata.get("assignee.comments");
+                            assigneeCommentsRaw = obj != null ? obj.toString() : "";
+                        }
 
-                if (metadata.containsKey("reporter.comments")) {
-                    Object obj = metadata.get("reporter.comments");
-                    reporterCommentsRaw = obj != null ? obj.toString() : "";
-                }
-            }
+                        if (metadata.containsKey("reporter.comments")) {
+                            Object obj = metadata.get("reporter.comments");
+                            reporterCommentsRaw = obj != null ? obj.toString() : "";
+                        }
+                    }
 
-            List<CommentEntry> assigneeEntries = parseComments(assigneeCommentsRaw,metadata,"assignee");
-            List<CommentEntry> reporterEntries = parseComments(reporterCommentsRaw,metadata,"reporter");
+                    List<CommentEntry> assigneeEntries = parseComments(assigneeCommentsRaw,metadata,"assignee");
+                    List<CommentEntry> reporterEntries = parseComments(reporterCommentsRaw,metadata,"reporter");
 
-            List<CommentEntry> allComments = new ArrayList<>();
-            allComments.addAll(assigneeEntries);
-            allComments.addAll(reporterEntries);
-            allComments.sort(Comparator.comparing(CommentEntry::getCreated));
-            StringBuilder commentsBuilder = new StringBuilder();
-            for (CommentEntry entry : allComments) {
-                commentsBuilder.append("Date: ").append(entry.getCreated()).append("\n");
-                commentsBuilder.append("Comment: ").append(entry.getComment()).append("\n\n");
-                if (!entry.getAuthorName().isEmpty()) {
-                    commentsBuilder.append("Author: ").append(entry.getAuthorName()).append("\n\n");
-                }
-            }
-            return "Issue Description:\n" + extractSummaryAndDescriptionSimple(issueText) +
-                    "\n\nComments (sorted by date):\n" + commentsBuilder.toString();
+                    List<CommentEntry> allComments = new ArrayList<>();
+                    allComments.addAll(assigneeEntries);
+                    allComments.addAll(reporterEntries);
+                    allComments.sort(Comparator.comparing(CommentEntry::getCreated));
+                    StringBuilder commentsBuilder = new StringBuilder();
+                    for (CommentEntry entry : allComments) {
+                        commentsBuilder.append("Date: ").append(entry.getCreated()).append("\n");
+                        commentsBuilder.append("Comment: ").append(entry.getComment()).append("\n\n");
+                        if (!entry.getAuthorName().isEmpty()) {
+                            commentsBuilder.append("Author: ").append(entry.getAuthorName()).append("\n\n");
+                        }
+                    }
+                    return "Issue Description:\n" + extractSummaryAndDescriptionSimple(issueText) +
+                            "\n\nComments (sorted by date):\n" + commentsBuilder.toString()+"Key: " + metadata.getOrDefault("key", "");
         }).collect(Collectors.toList());
         return combinedContents;
+    }
+
+    public  boolean filterOutLowScoreDocuments(Document doc) {
+        if (doc != null && doc.getScore() != null && doc.getScore() <= 0.6) {
+            LOGGER.info("Skipping document with low score: {},key:{}", doc.getScore(),doc.getMetadata()!=null?doc.getMetadata().get("key"):"N/A");
+            return false;
+        }
+        return true;
     }
 
     private List<CommentEntry> parseComments(String rawComments, Map<String, Object> metadata, String role) {

@@ -68,9 +68,11 @@ public class OllamaService {
                 "    Summarize the solution or resolution proposed in the comments and discussion.\n" +
                 "\n"+
                 "\n" +
-                "Author: means assignee Name and also mentioned in the response to contact the author for more details. \n"+
+                "Author: means assignee Name if not empty and also add this line in response to contact the author for more details. \n"+
                 "\n" +
-                "Please only include the three sections above. Do not mention any metadata, Git URLs, or who made the comments. Exclude any URLs silently without mentioning their removal.\n" +
+                "Issue No: Add the Issue Key If key is not empty in the input data and also add this line in response that take the reference of this issue"+
+                "\n" +
+                "Please only include the four sections above. Do not mention any metadata, Git URLs, or who made the comments. Exclude any URLs silently without mentioning their removal.\n" +
                 "---\n" +
                 "\n" +
                 "Input Data: ";
