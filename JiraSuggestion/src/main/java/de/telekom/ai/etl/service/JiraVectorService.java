@@ -1,6 +1,6 @@
 package de.telekom.ai.etl.service;
 
-import de.telekom.ai.etl.controller.IngestionController;
+import de.telekom.ai.etl.model.JiraComment;
 import de.telekom.ai.etl.model.JiraRawFields;
 import de.telekom.ai.etl.model.JiraRawIssue;
 import de.telekom.ai.etl.model.JiraUser;
@@ -9,13 +9,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
-import de.telekom.ai.etl.model.JiraComment;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 @Service
@@ -74,7 +72,7 @@ public class JiraVectorService {
     private String summarizeComments(List<JiraComment> comments) {
         if (comments == null || comments.isEmpty()) return "";
         return comments.stream()
-                .map(c -> String.format("created:[%s], body:[%s]", c.getCreated(), c.getBody()))
+                .map(c -> String.format("created:{{ %s }}, body:{{ %s }}", c.getCreated(), c.getBody()))
                 .collect(Collectors.joining("\n---\n"));
     }
 

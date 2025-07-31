@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.telekom.ai.etl.model.*;
 import de.telekom.ai.etl.service.EtlPipeline;
 import de.telekom.ai.etl.service.JiraVectorService;
-
 import de.telekom.ai.etl.service.LLMService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -14,16 +13,12 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @CrossOrigin(origins = "http://localhost:8083")
@@ -68,12 +63,12 @@ public class IngestionController {
     }
 
     @GetMapping("/search")
-    public Mono<List<Document>> searchDocuments(@RequestParam String query) {
+    public Mono<List<Document>> searchDocuments(@RequestParam String query,@RequestParam int topk) {
         LOGGER.info("Search query: {}", query);
         return Mono.fromCallable(() ->
                 vectorStore.similaritySearch(SearchRequest.builder()
                         .query(query)
-                        .topK(1)
+                        .topK(topk)
                         .build())
                 ).subscribeOn(Schedulers.boundedElastic())
                     .doOnSuccess(results -> {
@@ -128,7 +123,7 @@ public class IngestionController {
                         Mono.fromRunnable(() -> {
                                     try {
                                         LOGGER.info("✅ Parsed JIRA issues: {}", apiResponse.getIssues());
-                                        jiraVectorService.saveIssues(apiResponse.getIssues());
+                                     //   jiraVectorService.saveIssues(apiResponse.getIssues());
                                     } catch (Exception e) {
                                         LOGGER.error("❌ Error saving to vector store: {}", e.getMessage(), e);
                                         throw new RuntimeException("Failed to save issues", e);
@@ -227,6 +222,6 @@ public class IngestionController {
                 reporter.getComments().add(comment);
             }
         });
-        LOGGER.info("JIRA ISSUE WITH COMMENTS: {}", issue);
+       // LOGGER.info("JIRA ISSUE WITH COMMENTS: {}", issue);
     }
 }
